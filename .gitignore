@@ -1,0 +1,18 @@
+# Internal working notes — kept out of the public portfolio
+*.docx
+~$*
+
+# OS / editor cruft
+.DS_Store
+.Rhistory
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Data & training artifacts (not committed; see data/README.md)
+data/*
+!data/README.md
+saved_models/
+Results/
