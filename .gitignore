@@ -11,8 +11,6 @@
 __pycache__/
 *.py[cod]
 
-# Data & training artifacts (not committed; see data/README.md)
-data/*
-!data/README.md
+# Training artifacts (not committed)
 saved_models/
 Results/

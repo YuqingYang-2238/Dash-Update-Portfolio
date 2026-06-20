@@ -1,38 +1,35 @@
 # Joint Classification and Redshift Estimation of Supernova Spectra with Transformers
 
-> A transformer that reads a supernova spectrum directly and predicts **both** its physical type **and** its redshift — sharply improving on the widely‑used DASH classifier, especially for the rare supernova types that matter most to the science.
 
 ![Conference](https://img.shields.io/badge/Open%20SkAI%202025-Poster-1565C0)
 ![Framework](https://img.shields.io/badge/PyTorch-Transformer-2E7D32)
-![Task](https://img.shields.io/badge/Tasks-Classification%20%2B%20Redshift-00838F)
+![Task](https://img.shields.io/badge/Tasks-Spectra%20Classification%20%2B%20Redshift%20Estimation-00838F)
 ![License](https://img.shields.io/badge/License-MIT-555555)
 
-**TL;DR** — Next‑generation sky surveys will record far more supernova spectra than astronomers can ever label by hand. The standard automated tool for this, **DASH**, breaks down on rare supernova types and is sensitive to redshift and heavy preprocessing. I built a transformer that ingests a spectrum on its native wavelength grid (no de‑redshifting or resampling) and jointly predicts supernova type and redshift. It lifts recall on the rare **IIn** class from **0.09 (DASH) to 0.70**, while reaching **88% overall accuracy**. The work was accepted as a **poster at Open SkAI 2025**.
-
----
+**TL;DR** — Massive fiber-fed spectroscopic surveys such as 4MOST will obtain hundreds of bright supernovae and other transient events, following discoveries by the Vera C. Rubin Observatory. Classifying these spectra probabilistically is crucial to incorporating them into population studies and cosmological analyses. We are constructing a novel transformer encoder-based framework for classifying these transient spectra and estimating their redshift. Our model supports variable-length spectra through masking and encodes wavelength information using sinusoidal positional embeddings, enabling robust performance on spectra with irregularly spaced wavelength coverage—an inherent challenge in real observational data. By evaluating on real supernova spectra from the Weizmann Interactive Supernova Data Repository (WISeREP) database, our approach outperforms existing methods (e.g. DASH - Muthukrishna et al., 2019) across key metrics. 
+This work was accepted as a poster at Open SkAI 2025, hosted by NSF-Simons AI Institute for the Sky (SkAI), 
+funded by the U.S. National Science Foundation and the Simons Foundation.
 
 ## The problem
 
-When a massive star dies, it explodes as a **supernova**. The light from that explosion, spread out into a **spectrum** (brightness as a function of wavelength), carries the chemical and physical fingerprints of the event. Astronomers sort supernovae into a handful of physical **types** — Ia, Ib/c, II, IIn, and the superluminous SLSNe‑I — and each type tells a different story about how the star died. Type Ia supernovae are the "standard candles" used to measure the expansion of the Universe, and the spectrum also encodes **redshift**, which tells us how far away the explosion happened and how much the Universe has stretched since its light set out.
+When a massive star dies, it explodes as a **supernova**. The light from that explosion, spread out into a **spectrum** (brightness as a function of wavelength), carries the chemical and physical fingerprints of the event. Astronomers sort supernovae into a handful of physical types: Ia, Ib/c, II, IIn, and the superluminous SLSNe‑I, and each type tells a different story about how the star died. Type Ia supernovae are the "standard candles" used to measure the expansion of the Universe, and the spectrum also encodes **redshift**, which tells us how far away the explosion happened and how much the Universe has stretched since its light set out.
+The catch is volume. Surveys such as the Vera C. Rubin Observatory's LSST will discover **millions** of transient events — far more than anyone could ever classify by hand, and only a small fraction can be followed up spectroscopically. Fast, reliable, automated classification of spectra, including the rare, faint, and scientifically precious types, is a genuine bottleneck for modern astronomy.
+
 
 ![Classification taxonomy](figures/taxonomy.png)
 
-The catch is volume. Surveys such as the Vera C. Rubin Observatory's LSST will discover **millions** of transient events — orders of magnitude more than humans, or limited spectroscopic follow‑up, could ever classify by hand. Fast, reliable, automated classification of spectra — including the rare, faint, and scientifically precious types — is a genuine bottleneck for modern astronomy.
-
 ## Why existing methods fall short
 
-Template‑matching tools (such as SNID) and the popular deep‑learning classifier **DASH** (Muthukrishna et al., 2019) demand heavily pre‑processed input: de‑redshifting, continuum removal, and resampling every spectrum onto a **fixed, evenly‑spaced wavelength grid**. I began this project by benchmarking DASH from scratch and documenting concrete failure modes:
+Template‑matching tools (such as SNID) and the popular deep‑learning classifier **DASH** (Muthukrishna et al., 2019) demand heavily pre‑processed input: de‑redshifting, continuum removal, and resampling every spectrum onto a fixed, evenly‑spaced wavelength grid. I began this project by benchmarking DASH from scratch and documenting concrete failure modes:
 
 - it **overfits the common classes and collapses on the rare ones** — recall on the IIn class drops to roughly **0.09**;
 - its accuracy is **sensitive to redshift**, degrading on higher‑redshift spectra;
-- it **cannot accept variable wavelength ranges or spacings**, so it can't generalise across instruments; and
-- it tends to **misclassify noisy spectra into the Ic bucket**.
-
-These weaknesses bite hardest exactly where the science is most valuable — the rare, faint, noisy, and high‑redshift events.
+- it **cannot accept variable wavelength ranges or spacings**, so it can't generalise across instruments;
+- it tends to **misclassify noisy spectra into the Ic group**.
 
 ## My approach
 
-I reframed the problem so a **single transformer** handles both tasks. A spectrum is treated as a sequence: the **flux** values are the tokens and the **wavelength** is encoded as position, so the model reads spectra on their native grid with **no de‑redshifting or resampling**. A redshift value can be supplied as metadata when it is available.
+I reframed the problem so a **single transformer** handles both tasks: transient classification and redshift estimation. A spectrum is treated as a sequence: the **flux** values are the tokens and the **wavelength** is encoded as position, so the model reads spectra on their native grid without de‑redshifting or resampling. A redshift value can be supplied as metadata when it is available.
 
 ![Model architecture](figures/architecture.png)
 
@@ -42,7 +39,7 @@ I explored four variants to learn the best way to combine scarce real data with 
 
 | Variant | Idea | Predicts |
 |---|---|---|
-| **Baseline** | Train directly on real Wiserep spectra, redshift as metadata | Type |
+| **Baseline** | Train directly on real Wiserep spectra, true redshift as metadata | Type |
 | **Transfer Learning** | Pretrain the backbone on balanced SASSAFRAS simulations, then fine‑tune on real data | Type |
 | **Model_Z** | Separate redshift and classification heads; the classifier can consume an *estimated* redshift, so it still works when the true value is missing | Type + redshift |
 | **Model_mt** | A single multi‑task head that predicts type and redshift **jointly** | Type + redshift |
@@ -76,14 +73,6 @@ I designed and built this project end to end, and I am the **sole author and mai
 ## Conference
 
 An abstract based on this work was **accepted as a poster at the inaugural Open SkAI 2025 conference**, held at the SkAI Hub in Chicago, Illinois, USA, on September 2–5, 2025.
-
-## Code & data
-
-- **Code:** the full model code lives in the companion repository (folders `models/`, `models_z/`, `models_mt/`, and `configs/` for the best‑performing hyperparameters) — [github.com/YuqingYang-2238](https://github.com/YuqingYang-2238).
-- **Processed data** (ready to train/validate): [Google Drive](https://drive.google.com/drive/folders/1kjsHkQVZ1SOoMGscvZc0JDy_e4d1h71C?usp=sharing).
-- **Raw data:** available on request from the dataset maintainers (Amanda and Jennifer).
-
-> Figures in this repository were generated from the model's own validation results. The recall‑by‑class comparison uses each model's per‑class validation recall; DASH is included as the prior state of the art.
 
 ## Author
 
